@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from teacher.fuzzy import FuzzyContinuousSet
 import numpy as np
+import copy
 
 class Antecedent(ABC):
     pass
@@ -26,9 +27,10 @@ class NumericAntecedent(Antecedent):
     
 
 class CategoricalAntecedent(Antecedent):
-    def __init__(self, variable, values):
+    def __init__(self, variable, values, operator = 'and'):
         self.variable = variable
         self.values = values
+        self.operator = operator
     
     def __repr__(self) -> str:
         return f"{self.variable} is {self.values}"
@@ -42,17 +44,24 @@ class CategoricalAntecedent(Antecedent):
         return hash(self) == hash(o)
     
     def match(self, value):
-        for v in self.values:
-            a, b = v
-            if not ((value == a) is b):
-                return 0
-        return 1
-
+        if self.operator == 'and':
+            for v in self.values:
+                a, b = v
+                if not ((value == a) is b):
+                    return 0
+            return 1
+        else:
+            for v in self.values:
+                a, b = v
+                if (value == a) is b:
+                    return 1
+            return 0
 
 class FuzzyAntecedent(Antecedent):
-    def __init__(self, variable, fuzzy_set):
+    def __init__(self, variable, fuzzy_set, multiple_sets=False):
         self.variable = variable
         self.fuzzy_set = fuzzy_set
+        self.multiple_sets = multiple_sets
 
     def __repr__(self) -> str:
         return f"{self.variable} is {self.fuzzy_set.name}"
@@ -66,7 +75,10 @@ class FuzzyAntecedent(Antecedent):
         return hash(self) == hash(o)
     
     def match(self, value):
-        return self.fuzzy_set.membership(np.array([value]))[0]
+        if self.multiple_sets:
+            return np.sum(self.fuzzy_set.membership(np.array([value]))[0])
+        else:
+            return self.fuzzy_set.membership(np.array([value]))[0]
 
 class HelloWorldRule():
     def __init__(self):
@@ -123,15 +135,29 @@ class FuzzyRule(Rule):
     def match(self, x):
         return super().match(x) * self.weight
     
+    def update(self, update):
+        new_rule = copy.deepcopy(self)
+        for ante in new_rule.antecedent:
+            if ante.variable in update:
+                ante.fuzzy_set = update[ante.variable]
+        return new_rule
+    
     @staticmethod
-    def from_json(json_rule, dataset_info):
+    def from_json(json_rule, dataset_info, multiple_antecedents=False):
         antecedent, consequent, weight, fuzzy_sets = json_rule
         rule_antecedent = []
 
-        for fs in fuzzy_sets:
-            if fs[0] in dataset_info['discrete']:
-                rule_antecedent.append(CategoricalAntecedent(dataset_info['antecedent_order'][fs[0]], [[fs[1], True]]))
-            else:
-                rule_antecedent.append(FuzzyAntecedent(dataset_info['antecedent_order'][fs[0]], FuzzyContinuousSet(fs[1],fs[2])))
-        
+        if multiple_antecedents:
+            for ante in antecedent:
+                if ante in dataset_info['discrete']:
+                    rule_antecedent.append(CategoricalAntecedent(dataset_info['antecedent_order'][ante], [[value, True] for value in antecedent[ante]], operator='or'))
+                else:
+                    rule_antecedent.append(FuzzyAntecedent(dataset_info['antecedent_order'][ante], [FuzzyContinuousSet(fs[1],fs[2]) for fs in antecedent[ante]], multiple_sets = True))
+        else:
+            for fs in fuzzy_sets:
+                if fs[0] in dataset_info['discrete']:
+                    rule_antecedent.append(CategoricalAntecedent(dataset_info['antecedent_order'][fs[0]], [[fs[1], True]]))
+                else:
+                    rule_antecedent.append(FuzzyAntecedent(dataset_info['antecedent_order'][fs[0]], FuzzyContinuousSet(fs[1],fs[2])))
+            
         return FuzzyRule(rule_antecedent, consequent, weight)

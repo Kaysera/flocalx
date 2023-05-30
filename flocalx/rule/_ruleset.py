@@ -1,6 +1,7 @@
-from ..rule import Rule, FuzzyRule
+from ..rule import Rule, FuzzyRule, FuzzyAntecedent
 from sklearn.utils import check_array, check_X_y
 import numpy as np
+from teacher.fuzzy import FuzzyContinuousSet
 
 
 class RuleSet():
@@ -116,7 +117,7 @@ class FuzzyRuleSet(RuleSet):
 
 
 class FLocalX(FuzzyRuleSet):
-    def __init__(self, rules, merge_operators):
+    def __init__(self, rules, merge_operators=[]):
         self.rules = rules
         self.merge_operators = merge_operators
 
@@ -126,6 +127,14 @@ class FLocalX(FuzzyRuleSet):
             "variable_mapping": self._variable_mapping
         }
 
+    @staticmethod
+    def from_json(json_ruleset, dataset_info, merge_operators=[]):
+        rules = set([])
+
+        for rule in json_ruleset:
+            rules.add(FuzzyRule.from_json(rule, dataset_info))
+    
+        return FLocalX(rules, merge_operators=merge_operators)
 
     def fit(self, X, y):
         X, y = check_X_y(X, y, dtype=['float64', 'object'])
@@ -139,7 +148,86 @@ class FLocalX(FuzzyRuleSet):
         pass
 
     def _fuzzy_set_fusion(self, X, y):
-        pass
+        # Extract all the fuzzy sets and the rules they are associated
+        system_fuzzy_sets = self._extract_fuzzy_sets()
+        # Fuse the similar fuzzy sets
+        fused_fuzzy_sets = self._system_fuzzy_set_fusion(system_fuzzy_sets)
+        # Update the rules with the new fuzzy sets
+        rule_updates = self._extract_rule_dict(fused_fuzzy_sets)
+        # Update the ruleset
+        self.rules = self._update_ruleset(rule_updates)
+
+    def _update_ruleset(self, rule_dict):
+        new_ruleset = set([])
+        for i, rule in enumerate(self.rules):
+            if i in rule_dict:
+                new_ruleset.add(rule.update(rule_dict[i]))
+            else:
+                new_ruleset.add(rule)
+        return new_ruleset
+
+    def _extract_rule_dict(self, system_dict):
+        rules_dict = {}
+        for variable in system_dict:
+            for fuzzy_set in system_dict[variable]:
+                for rule in system_dict[variable][fuzzy_set]:
+                    if rule not in rules_dict:
+                        rules_dict[rule] = {variable: fuzzy_set}
+                    else:
+                        rules_dict[rule][variable] = fuzzy_set
+        return rules_dict
+
+    def _system_fuzzy_set_fusion(self, system_dict, threshold=0.5):
+        # Fuse the fuzzy sets with a similarity higher than threshold
+        # Iterate until no sets are fused
+        new_system_dict = {}
+
+        for variable in system_dict:
+            sets_dict = system_dict[variable]
+            first_len = len(sets_dict.keys())
+            new_sets_dict = self._similarity_fusion(sets_dict, threshold=threshold)
+            second_len = len(new_sets_dict.keys())
+            while first_len != second_len:
+                first_len = second_len
+                new_sets_dict = self._similarity_fusion(new_sets_dict)
+                second_len = len(new_sets_dict.keys())
+
+            new_system_dict[variable] = new_sets_dict
+        
+        return new_system_dict
+    
+    def _similarity_fusion(self, sets_dict, threshold=0.5):
+        # Fuse the sets with a similarity higher than threshold
+        new_sets_dict = {}
+        sets = sorted(list(sets_dict.keys()))
+        while len(sets) >= 2:
+            a = sets.pop(0)
+            b = sets.pop(0)
+            sim = FuzzyContinuousSet.jaccard_similarity(a, b)
+            if sim > threshold:
+                new_sets_dict[FuzzyContinuousSet.merge(a, b)] = sets_dict[a] + sets_dict[b]
+                
+            else:
+                new_sets_dict[a] = sets_dict[a]
+                new_sets_dict[b] = sets_dict[b]
+        
+        while(sets):
+            new_sets_dict[sets.pop(0)] = sets_dict[a]
+    
+        return new_sets_dict
+    
+    def _extract_fuzzy_sets(self):
+        fss = {}
+        for i, rule in enumerate(self.rules):
+            for antecedent in rule.antecedent:
+                if isinstance(antecedent, FuzzyAntecedent):
+                    if antecedent.variable not in fss:
+                        fss[antecedent.variable] = {antecedent.fuzzy_set: [i]}
+                    elif antecedent.fuzzy_set not in fss[antecedent.variable]:
+                        fss[antecedent.variable][antecedent.fuzzy_set] = [i]
+                    else:
+                        fss[antecedent.variable][antecedent.fuzzy_set].append(i)
+        return fss
 
     def _variable_mapping(self, X, y):
         pass
