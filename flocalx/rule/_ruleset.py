@@ -1,7 +1,9 @@
 from ..rule import Rule, FuzzyRule, FuzzyAntecedent
+from ..genetic import Chromosome
 from sklearn.utils import check_array, check_X_y
 import numpy as np
 from teacher.fuzzy import FuzzyContinuousSet
+import copy
 
 
 class RuleSet():
@@ -124,7 +126,7 @@ class FLocalX(FuzzyRuleSet):
         self.MERGE_OPERATORS = {
             "variable_selection": self._variable_selection,
             "fuzzy_set_fusion": self._fuzzy_set_fusion,
-            "variable_mapping": self._variable_mapping
+            "similar_rule_fusion": self._similar_rule_fusion,
         }
 
     @staticmethod
@@ -211,8 +213,8 @@ class FLocalX(FuzzyRuleSet):
                 new_sets_dict[a] = sets_dict[a]
                 new_sets_dict[b] = sets_dict[b]
         
-        while(sets):
-            new_sets_dict[sets.pop(0)] = sets_dict[a]
+        for s in sets:
+            new_sets_dict[s] = sets_dict[s]
     
         return new_sets_dict
     
@@ -229,5 +231,113 @@ class FLocalX(FuzzyRuleSet):
                         fss[antecedent.variable][antecedent.fuzzy_set].append(i)
         return fss
 
-    def _variable_mapping(self, X, y):
-        pass
+    def _similar_rule_fusion(self, X, y):
+        # Group the rules with the same variables in the antecedent
+        same_antecedent_rules = self._group_rules_by_antecedent()
+
+        # Combine the rules with the same antecedent
+        combined_rules = [
+            self._combine_rules_with_same_antecedent([list(self.rules)[i] for i in same_antecedent_rules[k]], X, y)
+            for k in same_antecedent_rules
+        ]
+
+        # Remove the rules before combining
+        obsolete_rules = []
+        for k in same_antecedent_rules:
+            obsolete_rules += same_antecedent_rules[k]
+
+        new_ruleset = [r for i, r in enumerate(self.rules) if i not in obsolete_rules]
+
+        # Add the new combined rules
+        for group in combined_rules:
+            for rule in group:
+                new_ruleset.append(rule)
+        
+        self.rules = set(new_ruleset)
+
+    def _group_rules_by_antecedent(self):
+        grouped_rules = {}
+        for i, rule in enumerate(self.rules):
+            key = (tuple(sorted([x.variable for x in rule.antecedent])), rule.consequent)
+            if key not in grouped_rules:
+                grouped_rules[key] = [i]
+            else:
+                grouped_rules[key].append(i)
+        return {k: v for k, v in grouped_rules.items() if len(v) > 1}
+    
+    def _improves(self, first, second, fusion, X, y, loss=0.95):
+        return fusion.confidence(X, y) > loss * max(first.confidence(X, y), second.confidence(X, y))
+    
+    def _combine_rules_with_same_antecedent(self, ruleset, X, y):
+        changes = True
+        i = 0
+        while changes and len(ruleset) > 1:
+            # print('Iteration', i)
+            ruleset = sorted(ruleset, key=lambda x: (x.support(X), x.confidence(X, y)), reverse=True)
+            # print(ruleset)
+            first = ruleset.pop(0)
+            new_ruleset = []
+            changes = False
+            while ruleset:
+                try:
+                    second = ruleset.pop(0)
+                except:
+                    # print('Breaking')
+                    new_ruleset.append(first)
+                    break
+                # print(f"Fusing rules {first} and {second}")
+                fusion = first.fusion(second)
+                if self._improves(first, second, fusion, X, y):
+                    # print(f'Fusion improves: {fusion}')
+                    changes = True
+                    new_ruleset.append(fusion)
+                    if len(ruleset) > 1:
+                        first = ruleset.pop(0)
+                    else:
+                        new_ruleset += ruleset
+                        break
+                    # print(f'New first: {first}')
+                else:
+                    if len(ruleset) > 0:
+                        new_ruleset.append(first)
+                        first = second
+                    else:
+                        new_ruleset.append(first)
+                        new_ruleset.append(second)
+                        break
+            
+            ruleset = new_ruleset
+            i += 1
+
+        return ruleset
+
+    def variable_mapping(self, new_fuzzy_variables):
+        new_ruleset = set([])
+
+        for rule in self.rules:
+            new_rule = copy.deepcopy(rule)
+            for premise in new_rule.antecedent:
+                if isinstance(premise, FuzzyAntecedent):
+                    premise.fuzzy_set = max(new_fuzzy_variables[premise.variable].fuzzy_sets, key=lambda set: FuzzyContinuousSet.jaccard_similarity(set, premise.fuzzy_set))
+            new_ruleset.add(new_rule)
+        self.rules = new_ruleset
+
+    def _rules_chromosome(self, variable_metadata):
+        return np.array([rule.chromosome(variable_metadata) for rule in self.rules])
+    
+    def _rules_modifier_chromosome(self, variable_metadata):
+        return np.array([rule.modifier_chromosome(variable_metadata) for rule in self.rules])
+    
+    def _variables_chromosome(self, metadata):
+        c = np.zeros((len(metadata['continuous']), metadata['sets'] - 2))
+        for var in metadata['continuous']:
+            c[metadata['continuous'][var], :] = np.array(list(metadata[var]['points'].keys())[1:-1])
+        return c
+    
+    def chromosome(self, variable_metadata, alpha=0.8, fitness=lambda x: 0):
+        variables = self._variables_chromosome(variable_metadata)
+        rules = self._rules_chromosome(variable_metadata)
+        modifiers = self._rules_modifier_chromosome(variable_metadata)
+        used_rules = np.ones(len(self.rules))
+
+        return Chromosome(variables, rules, modifiers, used_rules, alpha, fitness)
