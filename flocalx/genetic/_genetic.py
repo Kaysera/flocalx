@@ -14,6 +14,8 @@ class GeneticAlgorithm:
         self.debug = debug
         self.size_pressure = size_pressure
         self.population_size = population_size
+        RANK_MULTIPLIER = 2/(population_size**2 + (population_size)) # Multiplier constant for rank selection
+        self.rank_probability = [(population_size - (i+1) + 1) * RANK_MULTIPLIER for i in range(population_size)] # Probability of selection for each chromosome for rank selection
         self.population = self._initialize_population(initial_ruleset)
 
 
@@ -41,27 +43,35 @@ class GeneticAlgorithm:
         p = p / p.sum()
         return np.random.choice(self.population, size=len(self.population), p=p)
     
+    def _rank_selection(self):
+        if self.debug:
+            print('Rank selection')
+        sorted_population = np.sort(self.population)[::-1]
+        return np.random.choice(sorted_population, size=len(self.population), p=self.rank_probability)
+
     def _crossover(self, population):
         if self.debug:
             print('Crossover')
             counter = 0
         new_population = np.copy(population)
-        for child1, child2 in zip(new_population[0::2], new_population[1::2]):
+        for i in range(0, len(new_population), 2):
+            child1, child2 = new_population[i], new_population[i+1]
             if np.random.random() < self.crossover_prob:
                 if self.debug:
                     print(f'Crossing pair {counter} and {counter + 1}')
                 child1, child2 = child1.crossover(child2)
             if self.debug:
                 counter += 2
+            new_population[i], new_population[i+1] = child1, child2
         return new_population
 
     def _mutation(self, population):
         if self.debug:
             print('Mutation')
         new_population = np.copy(population)
-        for chromosome in new_population:
+        for i in range(len(new_population)):
             if np.random.random() < self.mutation_prob:
-                chromosome = chromosome.mutation(self.metadata)
+                new_population[i] = new_population[i].mutation(self.metadata)
         return new_population
     
     def _elitism(self, population):
