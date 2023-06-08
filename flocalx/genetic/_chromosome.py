@@ -72,24 +72,19 @@ class Chromosome:
     
     def crossover(self, other):
 
-        variables_child_1, variables_child_2, variables_child_3, variables_child_4 = self._max_min_arithmetic_crossover(self.variables.flatten(), other.variables.flatten())
+        variables_children = self._max_min_arithmetic_crossover(self.variables.flatten(), other.variables.flatten())
         rules_child_1, rules_child_2 = self._two_point_crossover(self.rules.flatten(), other.rules.flatten())
         modifiers_child_1, modifiers_child_2 = self._two_point_crossover(self.modifiers.flatten(), other.modifiers.flatten())
         used_rules_child_1, used_rules_child_2 = self._two_point_crossover(self.used_rules.flatten(), other.used_rules.flatten())
 
-        child_1 = Chromosome(variables_child_1.reshape(self.variables.shape), rules_child_1.reshape(self.rules.shape), modifiers_child_1.reshape(self.modifiers.shape), used_rules_child_1.reshape(self.used_rules.shape), self.alpha, self.fitness)
-        child_2 = Chromosome(variables_child_1.reshape(self.variables.shape), rules_child_2.reshape(self.rules.shape), modifiers_child_2.reshape(self.modifiers.shape), used_rules_child_2.reshape(self.used_rules.shape), self.alpha, self.fitness)
+        children = []
+        for var_child in np.unique(np.array(variables_children).round(3), axis=0):
+            child_1 = Chromosome(var_child.reshape(self.variables.shape), rules_child_1.reshape(self.rules.shape), modifiers_child_1.reshape(self.modifiers.shape), used_rules_child_1.reshape(self.used_rules.shape), self.alpha, self.fitness)
+            child_2 = Chromosome(var_child.reshape(self.variables.shape), rules_child_2.reshape(self.rules.shape), modifiers_child_2.reshape(self.modifiers.shape), used_rules_child_2.reshape(self.used_rules.shape), self.alpha, self.fitness)
+            children.append(child_1)
+            children.append(child_2)
 
-        child_3 = Chromosome(variables_child_2.reshape(self.variables.shape), rules_child_1.reshape(self.rules.shape), modifiers_child_1.reshape(self.modifiers.shape), used_rules_child_1.reshape(self.used_rules.shape), self.alpha, self.fitness)
-        child_4 = Chromosome(variables_child_2.reshape(self.variables.shape), rules_child_2.reshape(self.rules.shape), modifiers_child_2.reshape(self.modifiers.shape), used_rules_child_2.reshape(self.used_rules.shape), self.alpha, self.fitness)
-
-        child_5 = Chromosome(variables_child_3.reshape(self.variables.shape), rules_child_1.reshape(self.rules.shape), modifiers_child_1.reshape(self.modifiers.shape), used_rules_child_1.reshape(self.used_rules.shape), self.alpha, self.fitness)
-        child_6 = Chromosome(variables_child_3.reshape(self.variables.shape), rules_child_2.reshape(self.rules.shape), modifiers_child_2.reshape(self.modifiers.shape), used_rules_child_2.reshape(self.used_rules.shape), self.alpha, self.fitness)
-
-        child_7 = Chromosome(variables_child_4.reshape(self.variables.shape), rules_child_1.reshape(self.rules.shape), modifiers_child_1.reshape(self.modifiers.shape), used_rules_child_1.reshape(self.used_rules.shape), self.alpha, self.fitness)
-        child_8 = Chromosome(variables_child_4.reshape(self.variables.shape), rules_child_2.reshape(self.rules.shape), modifiers_child_2.reshape(self.modifiers.shape), used_rules_child_2.reshape(self.used_rules.shape), self.alpha, self.fitness)
-
-        return sorted([child_1, child_2, child_3, child_4, child_5, child_6, child_7, child_8], reverse = True)[:2]
+        return sorted(children, reverse = True)[:2]
 
     def _variables_mutation(self, metadata):
         new_variables = np.copy(self.variables)
