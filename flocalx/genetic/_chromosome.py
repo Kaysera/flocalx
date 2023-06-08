@@ -89,7 +89,7 @@ class Chromosome:
         child_7 = Chromosome(variables_child_4.reshape(self.variables.shape), rules_child_1.reshape(self.rules.shape), modifiers_child_1.reshape(self.modifiers.shape), used_rules_child_1.reshape(self.used_rules.shape), self.alpha, self.fitness)
         child_8 = Chromosome(variables_child_4.reshape(self.variables.shape), rules_child_2.reshape(self.rules.shape), modifiers_child_2.reshape(self.modifiers.shape), used_rules_child_2.reshape(self.used_rules.shape), self.alpha, self.fitness)
 
-        return sorted([child_1, child_2, child_3, child_4, child_5, child_6, child_7, child_8], reverse = True)
+        return sorted([child_1, child_2, child_3, child_4, child_5, child_6, child_7, child_8], reverse = True)[:2]
 
     def _variables_mutation(self, metadata):
         new_variables = np.copy(self.variables)
