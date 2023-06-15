@@ -55,16 +55,19 @@ class FuzzyRuleSet(RuleSet):
         ## Aggregated vote
         ## First, we get the sum of the match values for each class
         predictions = []
-        votes = {}
         for x in X:
+            votes = {}
             for rule in self.rules:
                 if rule.consequent not in votes:
                     votes[rule.consequent] = 0
                 votes[rule.consequent] += rule.match(x)
         
             ## Then, we get the class with the highest sum
-            predictions.append(max(votes, key=votes.get))
-        print(votes)
+            if votes and max(votes.values()) > 0:
+                predictions.append(max(votes, key=votes.get))
+            else:
+                predictions.append(np.random.randint(0, 2))
+        # print(votes)
         return predictions
     
     def _robust_threshold(self, instance, rule_list, class_val):

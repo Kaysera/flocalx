@@ -95,7 +95,7 @@ class FuzzyAntecedent(Antecedent):
         return self.variable < o.variable
     
     def match(self, value):
-        match = None
+        match = 0
         if self.multiple_sets:
             match = np.sum(self.fuzzy_set.membership(np.array([value]))[0])
         else:
@@ -141,7 +141,10 @@ class Rule():
             return self.cache[x]
     
     def _match(self, x):
-        return min([antecedent.match(x[antecedent.variable]) for antecedent in self.antecedent])
+        try:
+            return min([antecedent.match(x[antecedent.variable]) for antecedent in self.antecedent])
+        except:
+            return 0
 
     def size(self):
         return len(self.antecedent)
