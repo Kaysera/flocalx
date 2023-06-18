@@ -47,10 +47,11 @@ class Chromosome:
     def to_rule_based_system(self, metadata):
         fuzzy_variables = self._fuzzy_variables(metadata)
         rules = set([])
+        all_antecedents = {}
 
         for rule, modifiers, used in zip(self.rules, self.modifiers, self.used_rules):
             if used:
-                rule = flocalx.rule.FuzzyRule.from_chromosome(rule, modifiers, fuzzy_variables, metadata)
+                rule = flocalx.rule.FuzzyRule.from_chromosome(rule, modifiers, fuzzy_variables, metadata, all_antecedents)
                 rules.add(rule)
         
         return flocalx.rule.FLocalX(rules)

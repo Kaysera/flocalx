@@ -1,6 +1,7 @@
 from sklearn.utils import check_X_y
 from sklearn.metrics import accuracy_score, roc_auc_score
 import numpy as np
+from functools import lru_cache
 
 class GeneticAlgorithm:
     def __init__(self, metadata, X, y, iterations=100, crossover_prob=0.8, mutation_prob=0.1, size_pressure=0.5, population_size=100, minibatch=None, initial_chromosomes=None, debug=True):
@@ -95,35 +96,19 @@ class GeneticAlgorithm:
             print(f'Best chromosome: {np.max(new_population)}')
         return new_population
 
+    @lru_cache(maxsize=10000)
     def _antecedent_match(self, antecedent, value):
-        if antecedent.variable in self.metadata['continuous']:
-            key = tuple((antecedent, value))
-            if key in self.variable_cache:
-                # print(f'Hit cache for {antecedent} and {value}')
-                return self.variable_cache[key]
-            else:
-                match = antecedent.match(value)
-                self.variable_cache[key] = match
-        else:
-            match = antecedent.match(value)
-        return match
+        return antecedent.match(value)
 
-    def _rule_match(self, rule, x, rule_chromosome_rep, mod_chromosome_rep, vars_chromosome_rep):
-        key = tuple((x.tobytes(), rule_chromosome_rep.tobytes(), mod_chromosome_rep.tobytes(), vars_chromosome_rep.tobytes()))
-        # if False:
-        if key in self.rule_cache:
-            # print(f'Hit cache for {rule} and {x}')
-            return self.rule_cache[key]
-        else:
-            try:
-                match = min([self._antecedent_match(antecedent, x[antecedent.variable]) for antecedent in rule.antecedent])
-            except:
-                match = 0
-            self.rule_cache[key] = match
-            return match
+    @lru_cache(maxsize=10000)
+    def _rule_match(self, rule_antecedent, x):
+        try:
+            match = np.min([self._antecedent_match(antecedent, x[antecedent.variable]) for antecedent in rule_antecedent])
+        except:
+            match = 0
+        return match
         
     def fitness(self, chromosome):
-        # self.cache_score(chromosome)
         return self.size_pressure * (1 - np.sum(chromosome.used_rules) / len(chromosome.used_rules)) + (1 - self.size_pressure) * self.cache_score(chromosome)
     
     def _minibatch(self, X, y):
@@ -142,54 +127,21 @@ class GeneticAlgorithm:
             X, y = self.X, self.y
         ## Aggregated vote
         ## First, we get the sum of the match values for each class
-        predictions = []
-        for x in X:
+        predictions = np.zeros(len(X))
+        for i, x in enumerate(X):
             votes = {}
-            for i, rule in enumerate(rules):
+            tx = tuple(x)
+            for rule in rules:
                 if rule.consequent not in votes:
                     votes[rule.consequent] = 0
-                
-                # TODO: FIX CACHE, ONLY SELECT THE VARIABLES THAT APPEAR IN THE RULE, NOW IT'S ALL OF THEM
-                variables = chromosome.variables.flatten()
 
-                votes[rule.consequent] += self._rule_match(rule, x, chromosome.rules[i], chromosome.modifiers[i], variables)
+                votes[rule.consequent] += self._rule_match(rule.antecedent, tx)
         
             ## Then, we get the class with the highest sum
             if votes and max(votes.values()) > 0:
-                predictions.append(max(votes, key=votes.get))
+                predictions[i] = max(votes, key=votes.get)
             else:
-                predictions.append(np.random.randint(0, 2)) # Random guess if no rules match
+                predictions[i] = np.random.randint(0, 2) # Random guess if no rules match
                 random_guesses += 1
 
         return roc_auc_score(y, predictions) * (1 - random_guesses / len(X))  
-    
-    def score(self, chromosome):
-        rb = chromosome.to_rule_based_system(self.metadata)
-        rules = rb.rules
-        if not rb.rules:
-            return 0
-        return roc_auc_score(self.y, rb.predict(self.X))
-        rules = chromosome.to_rule_based_system(self.metadata).rules
-
-        ## Aggregated vote
-        ## First, we get the sum of the match values for each class
-        predictions = []
-        votes = {}
-        for x in self.X:
-            for i, rule in enumerate(rules):
-                if rule.consequent not in votes:
-                    votes[rule.consequent] = 0
-                
-                # TODO: FIX CACHE, ONLY SELECT THE VARIABLES THAT APPEAR IN THE RULE, NOW IT'S ALL OF THEM
-                variables = chromosome.variables.flatten()
-
-                votes[rule.consequent] += self._rule_match(rule, x, chromosome.rules[i], chromosome.modifiers[i], variables)
-        
-            ## Then, we get the class with the highest sum
-            if votes:
-                predictions.append(max(votes, key=votes.get))
-            else:
-                predictions.append(np.random.randint(0, 2)) # Random guess if no rules match
-
-        return accuracy_score(self.y, predictions)
-    

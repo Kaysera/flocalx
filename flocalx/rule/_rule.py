@@ -79,12 +79,15 @@ class FuzzyAntecedent(Antecedent):
         self.fuzzy_set = fuzzy_set
         self.multiple_sets = multiple_sets
         self.modifier = modifier
+        self._hash = None
 
     def __repr__(self) -> str:
         return f"{self.variable} is {self.modifier if self.modifier else ''} {self.fuzzy_set.name}"
     
     def __hash__(self) -> int:
-        return hash((self.variable, self.fuzzy_set, self.modifier))
+        if self._hash is None:
+            self._hash = hash((self.variable, self.fuzzy_set, self.modifier))
+        return self._hash
     
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, FuzzyAntecedent):
@@ -120,12 +123,15 @@ class Rule():
         self.antecedent = tuple(sorted(antecedent))
         self.consequent = consequent
         self.cache = {}
+        self._hash = None
     
     def __repr__(self) -> str:
         return f"{self.antecedent} -> {self.consequent}"
     
     def __hash__(self) -> int:
-        return hash((tuple(self.antecedent), self.consequent))
+        if self._hash is None:
+            self._hash = hash((self.antecedent, self.consequent))
+        return self._hash
 
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, Rule):
@@ -259,17 +265,22 @@ class FuzzyRule(Rule):
         return chromosome
     
     @staticmethod
-    def from_chromosome(chromosome, modifier_chromosome, fuzzy_variables, metadata):
+    def from_chromosome(rule_chromosome, modifier_chromosome, fuzzy_variables, metadata, all_antecedents):
         antecedents = []
         for i, var in enumerate(fuzzy_variables):
-            if chromosome[i] == -1:
+            if rule_chromosome[i] == -1: # If fuzzy variable not in use
                 continue
-            if isinstance(var.fuzzy_sets[0], FuzzyContinuousSet):
-                antecedents.append(FuzzyAntecedent(i, var.fuzzy_sets[int(chromosome[i])]))
+            if (i, rule_chromosome[i]) in all_antecedents: # Check if we already have this antecedent
+                antecedents.append(all_antecedents[(i, rule_chromosome[i])])
+                continue
+            if isinstance(var.fuzzy_sets[0], FuzzyContinuousSet): # If not we create it
+                new_ante = FuzzyAntecedent(i, var.fuzzy_sets[int(rule_chromosome[i])])
             else:
-                antecedents.append(CategoricalAntecedent(i, [[var.fuzzy_sets[int(chromosome[i])].value, True]]))
+                new_ante = CategoricalAntecedent(i, [[var.fuzzy_sets[int(rule_chromosome[i])].value, True]])
+            all_antecedents[(i, rule_chromosome[i])] = new_ante # And save it
+            antecedents.append(new_ante)
         
-        for premise in antecedents:
+        for premise in antecedents: # Add modifiers
             if premise.variable in metadata['continuous']:
                 if modifier_chromosome[metadata['continuous'][premise.variable]] == 0:
                     premise.modifier = 'very'
@@ -277,4 +288,4 @@ class FuzzyRule(Rule):
                 elif modifier_chromosome[metadata['continuous'][premise.variable]] == 1:
                     premise.modifier = 'slightly'
         
-        return FuzzyRule(antecedents, chromosome[-1])
+        return FuzzyRule(antecedents, rule_chromosome[-1])
