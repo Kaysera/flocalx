@@ -1,9 +1,22 @@
-from ..rule import Rule, FuzzyRule, FuzzyAntecedent
-from ..genetic import Chromosome
-from sklearn.utils import check_array, check_X_y
-import numpy as np
-from teacher.fuzzy import FuzzyContinuousSet
+# =============================================================================
+# Imports
+# =============================================================================
+
+# Standard library
 import copy
+
+# Third party
+import numpy as np
+from sklearn.utils import check_array, check_X_y
+from teacher.fuzzy import FuzzyContinuousSet
+
+# Local application
+from ..genetic import Chromosome
+from ..rule import Rule, FuzzyRule, FuzzyAntecedent
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 
 class RuleSet():
@@ -16,7 +29,7 @@ class RuleSet():
 
         for rule in json_ruleset:
             rules.add(Rule.from_json(rule, dataset_info))
-    
+
         return RuleSet(rules)
 
     def fit(self, X, y):
@@ -25,16 +38,17 @@ class RuleSet():
     def predict(self, X):
         X = check_array(X, dtype=['float64', 'object'])
         return [max([(rule.match(x), rule.consequent) for rule in self.rules])[1] for x in X]
-    
+
     def score(self, X, y):
         X, y = check_X_y(X, y, dtype=['float64', 'object'])
         return np.sum(self.predict(X) == y)/y.shape[0]
 
     def size(self):
         return len(self.rules)
-    
+
     def rule_size(self):
         return np.mean([rule.size() for rule in self.rules])
+
 
 class FuzzyRuleSet(RuleSet):
     def __init__(self, rules):
@@ -46,14 +60,14 @@ class FuzzyRuleSet(RuleSet):
 
         for rule in json_ruleset:
             rules.add(FuzzyRule.from_json(rule, dataset_info))
-    
+
         return FuzzyRuleSet(rules)
-    
+
     def predict(self, X):
         X = check_array(X, dtype=['float64', 'object'])
 
-        ## Aggregated vote
-        ## First, we get the sum of the match values for each class
+        # Aggregated vote
+        # First, we get the sum of the match values for each class
         predictions = []
         for x in X:
             votes = {}
@@ -61,15 +75,14 @@ class FuzzyRuleSet(RuleSet):
                 if rule.consequent not in votes:
                     votes[rule.consequent] = 0
                 votes[rule.consequent] += rule.match(x)
-        
-            ## Then, we get the class with the highest sum
+
+            # Then, we get the class with the highest sum
             if votes and max(votes.values()) > 0:
                 predictions.append(max(votes, key=votes.get))
             else:
                 predictions.append(np.random.randint(0, 2))
-        # print(votes)
         return predictions
-    
+
     def _robust_threshold(self, instance, rule_list, class_val):
         """Obtain the robust threshold"""
         other_classes = np.unique([rule.consequent for rule in rule_list if rule.consequent != class_val])
@@ -83,8 +96,8 @@ class FuzzyRuleSet(RuleSet):
             all_th.append(th)
 
         return max(all_th)
-    
-    def mr_factual(self, x, threshold = 0.001):
+
+    def mr_factual(self, x, threshold=0.001):
         """
         Generate the minimum robust factual.
 
@@ -105,7 +118,7 @@ class FuzzyRuleSet(RuleSet):
         """
         class_val = self.predict(x.reshape(1, -1))[0]
         print(class_val)
-        fired_rules =  [rule for rule in self.rules if rule.match(x) > threshold]
+        fired_rules = [rule for rule in self.rules if rule.match(x) > threshold]
         print(fired_rules)
         class_fired_rules = [rule for rule in fired_rules if rule.consequent == class_val]
         class_fired_rules.sort(key=lambda rule: rule.match(x) * rule.weight, reverse=True)
@@ -138,7 +151,7 @@ class FLocalX(FuzzyRuleSet):
 
         for rule in json_ruleset:
             rules.add(FuzzyRule.from_json(rule, dataset_info))
-    
+
         return FLocalX(rules, merge_operators=merge_operators)
 
     def fit(self, X, y):
@@ -148,7 +161,7 @@ class FLocalX(FuzzyRuleSet):
 
         for operator in self.merge_operators:
             self.MERGE_OPERATORS[operator](X, y)
-    
+
     def _variable_selection(self, X, y):
         pass
 
@@ -198,9 +211,9 @@ class FLocalX(FuzzyRuleSet):
                 second_len = len(new_sets_dict.keys())
 
             new_system_dict[variable] = new_sets_dict
-        
+
         return new_system_dict
-    
+
     def _similarity_fusion(self, sets_dict, threshold=0.5):
         # Fuse the sets with a similarity higher than threshold
         new_sets_dict = {}
@@ -211,16 +224,16 @@ class FLocalX(FuzzyRuleSet):
             sim = FuzzyContinuousSet.jaccard_similarity(a, b)
             if sim > threshold:
                 new_sets_dict[FuzzyContinuousSet.merge(a, b)] = sets_dict[a] + sets_dict[b]
-                
+
             else:
                 new_sets_dict[a] = sets_dict[a]
                 new_sets_dict[b] = sets_dict[b]
-        
+
         for s in sets:
             new_sets_dict[s] = sets_dict[s]
-    
+
         return new_sets_dict
-    
+
     def _extract_fuzzy_sets(self):
         fss = {}
         for i, rule in enumerate(self.rules):
@@ -255,7 +268,7 @@ class FLocalX(FuzzyRuleSet):
         for group in combined_rules:
             for rule in group:
                 new_ruleset.append(rule)
-        
+
         self.rules = set(new_ruleset)
 
     def _group_rules_by_antecedent(self):
@@ -267,10 +280,10 @@ class FLocalX(FuzzyRuleSet):
             else:
                 grouped_rules[key].append(i)
         return {k: v for k, v in grouped_rules.items() if len(v) > 1}
-    
+
     def _improves(self, first, second, fusion, X, y, loss=0.95):
         return fusion.confidence(X, y) > loss * max(first.confidence(X, y), second.confidence(X, y))
-    
+
     def _combine_rules_with_same_antecedent(self, ruleset, X, y):
         changes = True
         i = 0
@@ -284,7 +297,7 @@ class FLocalX(FuzzyRuleSet):
             while ruleset:
                 try:
                     second = ruleset.pop(0)
-                except:
+                except Exception:  # No more rules in ruleset to merge
                     # print('Breaking')
                     new_ruleset.append(first)
                     break
@@ -308,7 +321,7 @@ class FLocalX(FuzzyRuleSet):
                         new_ruleset.append(first)
                         new_ruleset.append(second)
                         break
-            
+
             ruleset = new_ruleset
             i += 1
 
@@ -321,22 +334,24 @@ class FLocalX(FuzzyRuleSet):
             new_rule = copy.deepcopy(rule)
             for premise in new_rule.antecedent:
                 if isinstance(premise, FuzzyAntecedent):
-                    premise.fuzzy_set = max(new_fuzzy_variables[premise.variable].fuzzy_sets, key=lambda set: FuzzyContinuousSet.jaccard_similarity(set, premise.fuzzy_set))
+                    premise.fuzzy_set = max(new_fuzzy_variables[premise.variable].fuzzy_sets,
+                                            key=lambda set: FuzzyContinuousSet.jaccard_similarity(set,
+                                                                                                  premise.fuzzy_set))
             new_ruleset.add(new_rule)
         self.rules = new_ruleset
 
     def _rules_chromosome(self, variable_metadata):
         return np.array([rule.chromosome(variable_metadata) for rule in self.rules])
-    
+
     def _rules_modifier_chromosome(self, variable_metadata):
         return np.array([rule.modifier_chromosome(variable_metadata) for rule in self.rules])
-    
+
     def _variables_chromosome(self, metadata):
         c = np.zeros((len(metadata['continuous']), metadata['sets'] - 2))
         for var in metadata['continuous']:
             c[metadata['continuous'][var], :] = np.array(list(metadata[var]['points'].keys())[1:-1])
         return c
-    
+
     def chromosome(self, variable_metadata, alpha=0.8, fitness=lambda x: 0):
         variables = self._variables_chromosome(variable_metadata)
         rules = self._rules_chromosome(variable_metadata)
