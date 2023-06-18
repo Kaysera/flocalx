@@ -1,7 +1,18 @@
+# =============================================================================
+# Imports
+# =============================================================================
+
+# Standard library
+from functools import lru_cache
+
+# Third party
+import numpy as np
 from sklearn.utils import check_X_y
 from sklearn.metrics import roc_auc_score
-import numpy as np
-from functools import lru_cache
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 
 class GeneticAlgorithm:
