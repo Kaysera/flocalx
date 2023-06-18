@@ -1,12 +1,23 @@
 from sklearn.utils import check_X_y
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import roc_auc_score
 import numpy as np
 from functools import lru_cache
 
+
 class GeneticAlgorithm:
-    def __init__(self, metadata, X, y, iterations=100, crossover_prob=0.8, mutation_prob=0.1, size_pressure=0.5, population_size=100, minibatch=None, initial_chromosomes=None, debug=True):
-        self.rule_cache = {}
-        self.variable_cache = {}
+    def __init__(self,
+                 metadata,
+                 X,
+                 y,
+                 iterations=100,
+                 crossover_prob=0.8,
+                 mutation_prob=0.1,
+                 size_pressure=0.5,
+                 population_size=100,
+                 minibatch=None,
+                 initial_chromosomes=None,
+                 debug=True):
+
         self.metadata = metadata
         self.X, self.y = check_X_y(X, y, dtype=['float64', 'object'])
         self.iterations = iterations
@@ -19,9 +30,12 @@ class GeneticAlgorithm:
         self.minibatch = minibatch
 
         self.population = self._initialize_population(initial_chromosomes)
-        RANK_MULTIPLIER = 2/(len(self.population)**2 + (len(self.population))) # Multiplier constant for rank selection
-        self.rank_probability = [(len(self.population) - (i+1) + 1) * RANK_MULTIPLIER for i in range(len(self.population))] # Probability of selection for each chromosome for rank selection
 
+        # Multiplier constant for rank selection
+        RANK_MULTIPLIER = 2/(len(self.population)**2 + (len(self.population)))
+        # Array of rank probabilities
+        self.rank_probability = [(len(self.population) - (i+1) + 1) * RANK_MULTIPLIER
+                                 for i in range(len(self.population))]
 
     def __call__(self):
         self.current_iteration = 0
@@ -42,19 +56,20 @@ class GeneticAlgorithm:
         if initial_chromosomes:
             for chromosome in initial_chromosomes:
                 chromosome.fitness = self.fitness
-                initial_population += chromosome.generate_initial_population(self.metadata, self.population_size // len(initial_chromosomes))
+                n_chromosomes = self.population_size // len(initial_chromosomes)
+                initial_population += chromosome.generate_initial_population(self.metadata,
+                                                                             n_chromosomes)
             return initial_population
         else:
             return np.zeros(self.population_size, dtype=object)
-        
-    
+
     def _selection(self):
         if self.debug:
             print('Selection')
         p = np.array([chromosome.score for chromosome in self.population])
         p = p / p.sum()
         return np.random.choice(self.population, size=len(self.population), p=p)
-    
+
     def _rank_selection(self):
         if self.debug:
             print('Rank selection')
@@ -86,7 +101,7 @@ class GeneticAlgorithm:
             if np.random.random() < self.mutation_prob:
                 new_population[i] = new_population[i].mutation(self.metadata)
         return new_population
-    
+
     def _elitism(self, population):
         if self.debug:
             print('Elitism')
@@ -103,18 +118,20 @@ class GeneticAlgorithm:
     @lru_cache(maxsize=10000)
     def _rule_match(self, rule_antecedent, x):
         try:
-            match = np.min([self._antecedent_match(antecedent, x[antecedent.variable]) for antecedent in rule_antecedent])
-        except:
+            match = np.min([self._antecedent_match(antecedent, x[antecedent.variable])
+                            for antecedent in rule_antecedent])
+        except Exception:
             match = 0
         return match
-        
+
     def fitness(self, chromosome):
-        return self.size_pressure * (1 - np.sum(chromosome.used_rules) / len(chromosome.used_rules)) + (1 - self.size_pressure) * self.cache_score(chromosome)
-    
+        return self.size_pressure * (1 - np.sum(chromosome.used_rules) / len(chromosome.used_rules)) \
+               + (1 - self.size_pressure) * self.cache_score(chromosome)
+
     def _minibatch(self, X, y):
         indices = np.random.choice(range(len(X)), size=self.minibatch, replace=True)
         return X[indices], y[indices]
-    
+
     def cache_score(self, chromosome):
         rb = chromosome.to_rule_based_system(self.metadata)
         rules = rb.rules
@@ -125,8 +142,8 @@ class GeneticAlgorithm:
             X, y = self._minibatch(self.X, self.y)
         else:
             X, y = self.X, self.y
-        ## Aggregated vote
-        ## First, we get the sum of the match values for each class
+        # Aggregated vote
+        # First, we get the sum of the match values for each class
         predictions = np.zeros(len(X))
         for i, x in enumerate(X):
             votes = {}
@@ -136,12 +153,12 @@ class GeneticAlgorithm:
                     votes[rule.consequent] = 0
 
                 votes[rule.consequent] += self._rule_match(rule.antecedent, tx)
-        
-            ## Then, we get the class with the highest sum
+
+            # Then, we get the class with the highest sum
             if votes and max(votes.values()) > 0:
                 predictions[i] = max(votes, key=votes.get)
             else:
-                predictions[i] = np.random.randint(0, 2) # Random guess if no rules match
+                predictions[i] = np.random.randint(0, 2)  # Random guess if no rules match
                 random_guesses += 1
 
-        return roc_auc_score(y, predictions) * (1 - random_guesses / len(X))  
+        return roc_auc_score(y, predictions) * (1 - random_guesses / len(X))
