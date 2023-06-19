@@ -27,6 +27,7 @@ class GeneticAlgorithm:
                  population_size=100,
                  minibatch=None,
                  initial_chromosomes=None,
+                 stagnation=False,
                  debug=True):
 
         self.metadata = metadata
@@ -39,8 +40,10 @@ class GeneticAlgorithm:
         self.size_pressure = size_pressure
         self.population_size = population_size
         self.minibatch = minibatch
+        self.stagnation = stagnation
 
         self.population = self._initialize_population(initial_chromosomes)
+        self.best_score = np.max(self.population)
 
         # Multiplier constant for rank selection
         RANK_MULTIPLIER = 2/(len(self.population)**2 + (len(self.population)))
@@ -60,6 +63,10 @@ class GeneticAlgorithm:
             self.population = self._elitism(population)
 
     def _finish(self):
+        if self.stagnation and self.best_score < np.max(self.population):
+            self.best_score = np.max(self.population)
+            self.current_iteration = 0
+            return False
         return self.current_iteration >= self.iterations
 
     def _initialize_population(self, initial_chromosomes):
