@@ -28,6 +28,7 @@ class GeneticAlgorithm:
                  minibatch=None,
                  initial_chromosomes=None,
                  stagnation=False,
+                 delta=0.001,
                  debug=True):
 
         self.metadata = metadata
@@ -41,6 +42,7 @@ class GeneticAlgorithm:
         self.population_size = population_size
         self.minibatch = minibatch
         self.stagnation = stagnation
+        self.delta = delta
 
         self.population = self._initialize_population(initial_chromosomes)
         self.best_score = np.max(self.population)
@@ -63,7 +65,7 @@ class GeneticAlgorithm:
             self.population = self._elitism(population)
 
     def _finish(self):
-        if self.stagnation and self.best_score < np.max(self.population):
+        if self.stagnation and np.abs(self.best_score - np.max(self.population)) < self.delta:
             self.best_score = np.max(self.population)
             self.current_iteration = 0
             return False
