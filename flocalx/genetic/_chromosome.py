@@ -50,6 +50,9 @@ class Chromosome:
     def __ge__(self, o: object) -> bool:
         return self.score >= o.score
 
+    def __sub__(self, other):
+        return self.score - other.score
+
     def _fuzzy_variables(self, metadata):
         fuzzy_points = {}
         for order in metadata['continuous']:

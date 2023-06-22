@@ -58,14 +58,14 @@ class GeneticAlgorithm:
         while not self._finish():
             self.current_iteration += 1
             if self.debug:
-                print(f'Iteration {self.current_iteration}')
+                print(f'Iteration {self.current_iteration}, max score: {np.max(self.population)}')
             population = self._rank_selection()
             population = self._crossover(population)
             population = self._mutation(population)
             self.population = self._elitism(population)
 
     def _finish(self):
-        if self.stagnation and np.abs(self.best_score - np.max(self.population)) < self.delta:
+        if self.stagnation and np.abs(self.best_score - np.max(self.population)) >= self.delta:
             self.best_score = np.max(self.population)
             self.current_iteration = 0
             return False
