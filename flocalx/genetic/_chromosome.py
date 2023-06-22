@@ -66,6 +66,10 @@ class Chromosome:
         fuzzy_variables = self._fuzzy_variables(metadata)
         rules = set([])
         all_antecedents = {}
+        if metadata['max_class']:
+            max_class = metadata['max_class']
+        else:
+            max_class = len(metadata['classes'])
 
         for rule, modifiers, used in zip(self.rules, self.modifiers, self.used_rules):
             if used:
@@ -76,7 +80,7 @@ class Chromosome:
                                                               all_antecedents)
                 rules.add(rule)
 
-        return flocalx.rule.FLocalX(rules)
+        return flocalx.rule.FLocalX(rules, max_class=max_class)
 
     def _max_min_arithmetic_crossover(self, parent1, parent2):
         child1 = np.min([parent1, parent2], axis=0)

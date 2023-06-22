@@ -56,8 +56,9 @@ class RuleSet():
 
 
 class FuzzyRuleSet(RuleSet):
-    def __init__(self, rules):
+    def __init__(self, rules, max_class=None):
         self.rules = rules
+        self.max_class = max_class
 
     @staticmethod
     def from_json(json_ruleset, dataset_info):
@@ -85,7 +86,10 @@ class FuzzyRuleSet(RuleSet):
             if votes and max(votes.values()) > 0:
                 predictions.append(max(votes, key=votes.get))
             else:
-                predictions.append(np.random.randint(0, 2))
+                if self.max_class is None:
+                    predictions.append(np.random.randint(0, 2))
+                else:
+                    predictions.append(self.max_class)
         return predictions
 
     def _robust_threshold(self, instance, rule_list, class_val):
@@ -140,8 +144,9 @@ class FuzzyRuleSet(RuleSet):
 
 
 class FLocalX(FuzzyRuleSet):
-    def __init__(self, rules, merge_operators=[]):
+    def __init__(self, rules, max_class=None, merge_operators=[]):
         self.rules = rules
+        self.max_class = max_class
         self.merge_operators = merge_operators
 
         self.MERGE_OPERATORS = {
@@ -153,11 +158,15 @@ class FLocalX(FuzzyRuleSet):
     @staticmethod
     def from_json(json_ruleset, dataset_info, merge_operators=[]):
         rules = set([])
+        if dataset_info['max_class']:
+            max_class = dataset_info['max_class']
+        else:
+            max_class = None
 
         for rule in json_ruleset:
             rules.add(FuzzyRule.from_json(rule, dataset_info))
 
-        return FLocalX(rules, merge_operators=merge_operators)
+        return FLocalX(rules, max_class=max_class, merge_operators=merge_operators)
 
     def fit(self, X, y):
         X, y = check_X_y(X, y, dtype=['float64', 'object'])
