@@ -8,6 +8,7 @@ import copy
 # Third party
 import numpy as np
 from sklearn.utils import check_array, check_X_y
+from sklearn.metrics import roc_auc_score
 from teacher.fuzzy import FuzzyContinuousSet
 
 # Local application
@@ -42,6 +43,10 @@ class RuleSet():
     def score(self, X, y):
         X, y = check_X_y(X, y, dtype=['float64', 'object'])
         return np.sum(self.predict(X) == y)/y.shape[0]
+
+    def auc(self, X, y):
+        X, y = check_X_y(X, y, dtype=['float64', 'object'])
+        return roc_auc_score(y, self.predict(X))
 
     def size(self):
         return len(self.rules)
