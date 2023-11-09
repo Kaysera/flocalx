@@ -9,7 +9,7 @@ import copy
 import numpy as np
 from sklearn.utils import check_array, check_X_y
 from sklearn.metrics import roc_auc_score
-from teacher.fuzzy import FuzzyContinuousSet
+from ..utils import FuzzyContinuousSet
 
 # Local application
 from ..genetic import Chromosome
@@ -56,9 +56,13 @@ class RuleSet():
 
 
 class FuzzyRuleSet(RuleSet):
-    def __init__(self, rules, max_class=None):
+    def __init__(self, rules, max_class=None, random_state=None):
         self.rules = rules
         self.max_class = max_class
+        if random_state is None:
+            self.random_state = np.random.default_rng()
+        else:
+            self.random_state = random_state
 
     @staticmethod
     def from_json(json_ruleset, dataset_info):
@@ -87,7 +91,7 @@ class FuzzyRuleSet(RuleSet):
                 predictions.append(max(votes, key=votes.get))
             else:
                 if self.max_class is None:
-                    predictions.append(np.random.randint(0, 2))
+                    predictions.append(self.random_state.integers(0, 2))
                 else:
                     predictions.append(self.max_class)
         return predictions
@@ -144,7 +148,11 @@ class FuzzyRuleSet(RuleSet):
 
 
 class FLocalX(FuzzyRuleSet):
-    def __init__(self, rules, max_class=None, merge_operators=[]):
+    def __init__(self, rules, max_class=None, merge_operators=[], random_state=None):
+        if random_state is None:
+            self.random_state = np.random.default_rng()
+        else:
+            self.random_state = random_state
         self.rules = rules
         self.max_class = max_class
         self.merge_operators = merge_operators
@@ -156,9 +164,13 @@ class FLocalX(FuzzyRuleSet):
         }
 
     @staticmethod
-    def from_json(json_ruleset, dataset_info, merge_operators=[]):
+    def from_json(json_ruleset, dataset_info, merge_operators=[], random_state=None):
+        if random_state is None:
+            random_state = np.random.default_rng()
+        else:
+            random_state = random_state
         rules = set([])
-        if dataset_info['max_class']:
+        if 'max_class' in dataset_info:
             max_class = dataset_info['max_class']
         else:
             max_class = None
@@ -166,7 +178,7 @@ class FLocalX(FuzzyRuleSet):
         for rule in json_ruleset:
             rules.add(FuzzyRule.from_json(rule, dataset_info))
 
-        return FLocalX(rules, max_class=max_class, merge_operators=merge_operators)
+        return FLocalX(rules, max_class=max_class, merge_operators=merge_operators, random_state=random_state)
 
     def fit(self, X, y):
         X, y = check_X_y(X, y, dtype=['float64', 'object'])
@@ -372,4 +384,4 @@ class FLocalX(FuzzyRuleSet):
         modifiers = self._rules_modifier_chromosome(variable_metadata)
         used_rules = np.ones(len(self.rules))
 
-        return Chromosome(variables, rules, modifiers, used_rules, alpha, fitness)
+        return Chromosome(variables, rules, modifiers, used_rules, alpha, fitness, self.random_state)

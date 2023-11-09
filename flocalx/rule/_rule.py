@@ -8,7 +8,7 @@ from abc import ABC
 
 # Third party
 import numpy as np
-from teacher.fuzzy import FuzzyContinuousSet
+from ..utils import FuzzyContinuousSet
 from sklearn.utils.validation import check_array, check_X_y
 
 # =============================================================================

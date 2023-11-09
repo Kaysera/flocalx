@@ -8,11 +8,16 @@ from functools import lru_cache
 # Third party
 import numpy as np
 from sklearn.utils import check_X_y
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
 
 # =============================================================================
 # Classes
 # =============================================================================
+
+METRIC_FUNCTIONS = {
+    'accuracy': accuracy_score,
+    'auc': roc_auc_score
+}
 
 
 class GeneticAlgorithm:
@@ -20,7 +25,7 @@ class GeneticAlgorithm:
                  metadata,
                  X,
                  y,
-                 iterations=100,
+                 kappa=100,
                  crossover_prob=0.8,
                  mutation_prob=0.1,
                  size_pressure=0.5,
@@ -28,12 +33,19 @@ class GeneticAlgorithm:
                  minibatch=None,
                  initial_chromosomes=None,
                  stagnation=False,
-                 delta=0.001,
-                 debug=True):
+                 epsilon=0.001,
+                 metric='accuracy',
+                 debug=True,
+                 random_state=None):
+
+        if random_state is None:
+            self.random_state = np.random.default_rng()
+        else:
+            self.random_state = random_state
 
         self.metadata = metadata
         self.X, self.y = check_X_y(X, y, dtype=['float64', 'object'])
-        self.iterations = iterations
+        self.kappa = kappa
         self.current_iteration = 0
         self.crossover_prob = crossover_prob
         self.mutation_prob = mutation_prob
@@ -42,10 +54,10 @@ class GeneticAlgorithm:
         self.population_size = population_size
         self.minibatch = minibatch
         self.stagnation = stagnation
-        self.delta = delta
-
+        self.epsilon = epsilon
         self.population = self._initialize_population(initial_chromosomes)
         self.best_score = np.max(self.population)
+        self.metric = metric
 
         # Multiplier constant for rank selection
         RANK_MULTIPLIER = 2/(len(self.population)**2 + (len(self.population)))
@@ -65,11 +77,11 @@ class GeneticAlgorithm:
             self.population = self._elitism(population)
 
     def _finish(self):
-        if self.stagnation and np.abs(self.best_score - np.max(self.population)) >= self.delta:
+        if self.stagnation and np.abs(self.best_score - np.max(self.population)) >= self.epsilon:
             self.best_score = np.max(self.population)
             self.current_iteration = 0
             return False
-        return self.current_iteration >= self.iterations
+        return self.current_iteration >= self.kappa
 
     def _initialize_population(self, initial_chromosomes):
         initial_population = []
@@ -88,13 +100,13 @@ class GeneticAlgorithm:
             print('Selection')
         p = np.array([chromosome.score for chromosome in self.population])
         p = p / p.sum()
-        return np.random.choice(self.population, size=len(self.population), p=p)
+        return self.random_state.choice(self.population, size=len(self.population), p=p)
 
     def _rank_selection(self):
         if self.debug:
             print('Rank selection')
         sorted_population = np.sort(self.population)[::-1]
-        return np.random.choice(sorted_population, size=len(self.population), p=self.rank_probability)
+        return self.random_state.choice(sorted_population, size=len(self.population), p=self.rank_probability)
 
     def _crossover(self, population):
         if self.debug:
@@ -103,7 +115,7 @@ class GeneticAlgorithm:
         new_population = np.copy(population)
         for i in range(0, len(new_population), 2):
             child1, child2 = new_population[i], new_population[i+1]
-            if np.random.random() < self.crossover_prob:
+            if self.random_state.random() < self.crossover_prob:
                 # if self.debug:
                 #     pass
                 #     print(f'Crossing pair {counter} and {counter + 1}')
@@ -118,7 +130,7 @@ class GeneticAlgorithm:
             print('Mutation')
         new_population = np.copy(population)
         for i in range(len(new_population)):
-            if np.random.random() < self.mutation_prob:
+            if self.random_state.random() < self.mutation_prob:
                 new_population[i] = new_population[i].mutation(self.metadata)
         return new_population
 
@@ -149,7 +161,7 @@ class GeneticAlgorithm:
                + (1 - self.size_pressure) * self.cache_score(chromosome)
 
     def _minibatch(self, X, y):
-        indices = np.random.choice(range(len(X)), size=self.minibatch, replace=True)
+        indices = self.random_state.choice(range(len(X)), size=self.minibatch, replace=True)
         return X[indices], y[indices]
 
     def cache_score(self, chromosome):
@@ -178,7 +190,7 @@ class GeneticAlgorithm:
             if votes and max(votes.values()) > 0:
                 predictions[i] = max(votes, key=votes.get)
             else:
-                predictions[i] = np.random.randint(0, 2)  # Random guess if no rules match
+                predictions[i] = self.random_state.integers(0, 2)  # Random guess if no rules match
                 random_guesses += 1
 
-        return roc_auc_score(y, predictions) * (1 - random_guesses / len(X))
+        return METRIC_FUNCTIONS[self.metric](y, predictions) * (1 - random_guesses / len(X))
