@@ -29,6 +29,7 @@ If you already have a working installation, you can install FLocalX with
 
 ```shell
 git clone https://github.com/Kaysera/flocalx
+pip install flocalx
 ```
 
 ## Usage
