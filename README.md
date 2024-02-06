@@ -21,7 +21,8 @@ approaches to create new global explanations.
 FLocalX requires:
 
     * Python (>=3.9)
-    * scikit-learn 
+    * NumPy 
+    * Scikit-Learn
 
 ### User installation
 

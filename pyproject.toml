@@ -10,7 +10,8 @@ readme = "README.md"
 license = { file = "LICENSE" }
 dynamic = ["version"]
 dependencies = [
-    "numpy>=1.19.3",
+    "numpy",
+    "scikit-learn",
 ]
 authors = [
     {name = "Guillermo Tomás Fernández Martin", email = "Guillermo.Fernandez@uclm.es"}
