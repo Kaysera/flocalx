@@ -17,6 +17,7 @@ from sklearn.utils.validation import check_array, check_X_y
 
 
 class Antecedent(ABC):
+    """Base class for antecedents in a rule"""
     pass
 
 

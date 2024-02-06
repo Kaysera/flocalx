@@ -1,0 +1,6 @@
+pydata-sphinx-theme>=0.8.1
+Sphinx>=5.0.0
+sphinx_design>=0.1.0
+scikit-fuzzy @ git+https://github.com/scikit-fuzzy/scikit-fuzzy
+numpy
+scikit-learn
