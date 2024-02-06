@@ -12,7 +12,6 @@ from sklearn.metrics import roc_auc_score
 from ..utils import FuzzyContinuousSet
 
 # Local application
-from ..genetic import Chromosome
 from ..rule import Rule, FuzzyRule, FuzzyAntecedent
 
 # =============================================================================
@@ -177,6 +176,27 @@ class FLocalX(FuzzyRuleSet):
 
         for rule in json_ruleset:
             rules.add(FuzzyRule.from_json(rule, dataset_info))
+
+        return FLocalX(rules, max_class=max_class, merge_operators=merge_operators, random_state=random_state)
+
+    @staticmethod
+    def from_chromosome(chromosome, metadata, merge_operators=[], random_state=None):
+        fuzzy_variables = chromosome._fuzzy_variables(metadata)
+        rules = set([])
+        all_antecedents = {}
+        if 'max_class' in metadata:
+            max_class = metadata['max_class']
+        else:
+            max_class = len(metadata['classes'])
+
+        for rule, modifiers, used in zip(chromosome.rules, chromosome.modifiers, chromosome.used_rules):
+            if used:
+                rule = FuzzyRule.from_chromosome(rule,
+                                                 modifiers,
+                                                 fuzzy_variables,
+                                                 metadata,
+                                                 all_antecedents)
+                rules.add(rule)
 
         return FLocalX(rules, max_class=max_class, merge_operators=merge_operators, random_state=random_state)
 
@@ -365,23 +385,3 @@ class FLocalX(FuzzyRuleSet):
                                                                                                   premise.fuzzy_set))
             new_ruleset.add(new_rule)
         self.rules = new_ruleset
-
-    def _rules_chromosome(self, variable_metadata):
-        return np.array([rule.chromosome(variable_metadata) for rule in self.rules])
-
-    def _rules_modifier_chromosome(self, variable_metadata):
-        return np.array([rule.modifier_chromosome(variable_metadata) for rule in self.rules])
-
-    def _variables_chromosome(self, metadata):
-        c = np.zeros((len(metadata['continuous']), metadata['sets'] - 2))
-        for var in metadata['continuous']:
-            c[metadata['continuous'][var], :] = np.array(list(metadata[var]['points'].keys())[1:-1])
-        return c
-
-    def chromosome(self, variable_metadata, alpha=0.8, fitness=lambda x: 0):
-        variables = self._variables_chromosome(variable_metadata)
-        rules = self._rules_chromosome(variable_metadata)
-        modifiers = self._rules_modifier_chromosome(variable_metadata)
-        used_rules = np.ones(len(self.rules))
-
-        return Chromosome(variables, rules, modifiers, used_rules, alpha, fitness, self.random_state)
