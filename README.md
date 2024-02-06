@@ -23,6 +23,13 @@ FLocalX requires:
     * Python (>=3.9)
     * NumPy 
     * Scikit-Learn
+    * Scikit-fuzzy
+  
+**IMPORTANT** Install scikit-fuzzy from their [GitHub](https://github.com/scikit-fuzzy/scikit-fuzzy) as the PyPi version
+is obsolete:
+```Shell
+pip install git+https://github.com/scikit-fuzzy/scikit-fuzzy
+```
 
 ### User installation
 
@@ -45,3 +52,13 @@ The following explainers are currently supported:
 
 The following metaheuristics are currently supported:
 - **Genetic Algorithm**
+
+
+#### References and Examples
+- FLocalX (accepted at IDA 2024)
+- Fuzzy Factuals and counterfactuals([Fernandez et al., 2022](https://doi.org/10.1109/TFUZZ.2022.3179582))
+  - Documentation <https://xai-teacher.readthedocs.io/en/latest/>
+  - Experiments: <https://github.com/Kaysera/teacher-experiments>
+- LORE ([Guidotti et al., 2018](https://doi.org/10.1109/MIS.2019.2957223))
+  - Documentation and examples: <https://doi.org/10.1109/MIS.2019.2957223>
+- FLARE ([Fernandez et al., 2023 preprint](https://dsi.uclm.es/descargas/technicalreports/DIAB-24-02-1/FLARE_Tech_Rep.pdf))
