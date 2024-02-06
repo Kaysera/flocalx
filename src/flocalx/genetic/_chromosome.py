@@ -245,7 +245,7 @@ class Chromosome:
 
     def generate_initial_population(self, metadata, population_size):
         """ Generate an initial population for the genetic algorithm.
-        
+
         Parameters
         ----------
         metadata : dict

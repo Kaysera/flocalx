@@ -24,8 +24,8 @@ class Antecedent(ABC):
 class NumericAntecedent(Antecedent):
     """ Class representing a numeric antecedent of a rule. """
     def __init__(self, variable, range):
-        """ Constructor for the NumericAntecedent class. 
-        
+        """ Constructor for the NumericAntecedent class.
+
         Parameters
         ----------
         variable : int
@@ -51,7 +51,7 @@ class NumericAntecedent(Antecedent):
         return self.variable < o.variable
 
     def match(self, value):
-        """ Method to compute the match of the antecedent with a given value. 
+        """ Method to compute the match of the antecedent with a given value.
         This is a crisp match, so the result is either 0 or 1.
 
         Parameters
@@ -70,8 +70,8 @@ class NumericAntecedent(Antecedent):
 class CategoricalAntecedent(Antecedent):
     """ Class representing a categorical antecedent of a rule. """
     def __init__(self, variable, values, operator='and'):
-        """ Constructor for the CategoricalAntecedent class. 
-        
+        """ Constructor for the CategoricalAntecedent class.
+
         Parameters
         ----------
         variable : int
@@ -116,7 +116,7 @@ class CategoricalAntecedent(Antecedent):
         ----------
         value : str
             The value to match the antecedent with.
-        
+
         Returns
         -------
         int
@@ -140,8 +140,8 @@ class CategoricalAntecedent(Antecedent):
 class FuzzyAntecedent(Antecedent):
     """ Class representing a fuzzy antecedent of a rule. """
     def __init__(self, variable, fuzzy_set, modifier=None, multiple_sets=False):
-        """ Constructor for the FuzzyAntecedent class. 
-        
+        """ Constructor for the FuzzyAntecedent class.
+
         Parameters
         ----------
         variable : int
@@ -244,8 +244,8 @@ class Rule():
         return hash(self) == hash(o)
 
     def match(self, x):
-        """ Method to compute the match of the rule with a given input. 
-        
+        """ Method to compute the match of the rule with a given input.
+
         Parameters
         ----------
         x : array
@@ -270,8 +270,8 @@ class Rule():
             return 0
 
     def size(self):
-        """ Method to compute the size of the antecedent of the rule. 
-        
+        """ Method to compute the size of the antecedent of the rule.
+
         Returns
         -------
         int
@@ -281,13 +281,13 @@ class Rule():
 
     @staticmethod
     def from_json(json_rule, dataset_info):
-        """ Method to create a Rule object from a JSON representation. 
-        
+        """ Method to create a Rule object from a JSON representation.
+
         Parameters
         ----------
         json_rule : dict
             The JSON representation of the rule.
-            
+
         dataset_info : dict
             The information of the dataset.
 
@@ -328,11 +328,11 @@ class FuzzyRule(Rule):
         self.weight = weight
 
     def __repr__(self) -> str:
-        return f"{self.weight} : {self.antecedent} -> {self.consequent}"
+        return f"{self.weight}: {self.antecedent} -> {self.consequent}"
 
     def match(self, x):
-        """ Method to compute the match of the rule with a given input. 
-        
+        """ Method to compute the match of the rule with a given input.
+
         Parameters
         ----------
         x : array
@@ -386,13 +386,13 @@ class FuzzyRule(Rule):
 
     @staticmethod
     def from_json(json_rule, dataset_info, multiple_antecedents=False):
-        """ Method to create a FuzzyRule object from a JSON representation. 
-        
+        """ Method to create a FuzzyRule object from a JSON representation.
+
         Parameters
         ----------
         json_rule : dict
             The JSON representation of the rule.
-        
+
         dataset_info : dict
             The information of the dataset.
 
@@ -430,8 +430,8 @@ class FuzzyRule(Rule):
         return FuzzyRule(rule_antecedent, consequent, weight)
 
     def chromosome(self, metadata):
-        """ Method to compute the chromosome representation of the rule. 
-        
+        """ Method to compute the chromosome representation of the rule.
+
         Parameters
         ----------
         metadata : dict
@@ -467,8 +467,8 @@ class FuzzyRule(Rule):
 
     @staticmethod
     def from_chromosome(rule_chromosome, modifier_chromosome, fuzzy_variables, metadata, all_antecedents):
-        """ Method to create a FuzzyRule object from a chromosome representation. 
-        
+        """ Method to create a FuzzyRule object from a chromosome representation.
+
         Parameters
         ----------
         rule_chromosome : array
