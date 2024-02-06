@@ -6,8 +6,6 @@
 import numpy as np
 from ..utils import get_fuzzy_variables
 
-# Local application
-import flocalx.rule
 
 # =============================================================================
 # Classes
@@ -58,6 +56,30 @@ class Chromosome:
     def __sub__(self, other):
         return self.score - other.score
 
+    @staticmethod
+    def _rules_chromosome(ruleset, variable_metadata):
+        return np.array([rule.chromosome(variable_metadata) for rule in ruleset.rules])
+
+    @staticmethod
+    def _rules_modifier_chromosome(ruleset, variable_metadata):
+        return np.array([rule.modifier_chromosome(variable_metadata) for rule in ruleset.rules])
+
+    @staticmethod
+    def _variables_chromosome(ruleset, metadata):
+        c = np.zeros((len(metadata['continuous']), metadata['sets'] - 2))
+        for var in metadata['continuous']:
+            c[metadata['continuous'][var], :] = np.array(list(metadata[var]['points'].keys())[1:-1])
+        return c
+
+    @staticmethod
+    def from_ruleset(ruleset, variable_metadata, alpha=0.8, fitness=lambda x: 0):
+        variables = Chromosome._variables_chromosome(ruleset, variable_metadata)
+        rules = Chromosome._rules_chromosome(ruleset, variable_metadata)
+        modifiers = Chromosome._rules_modifier_chromosome(ruleset, variable_metadata)
+        used_rules = np.ones(len(ruleset.rules))
+
+        return Chromosome(variables, rules, modifiers, used_rules, alpha, fitness, ruleset.random_state)
+
     def _fuzzy_variables(self, metadata):
         fuzzy_points = {}
         for order in metadata['continuous']:
@@ -66,26 +88,6 @@ class Chromosome:
                                                     + [metadata[order]['max']]
 
         return get_fuzzy_variables(fuzzy_points, metadata['discrete_fuzzy_values'], metadata['fuzzy_variables_order'])
-
-    def to_rule_based_system(self, metadata):
-        fuzzy_variables = self._fuzzy_variables(metadata)
-        rules = set([])
-        all_antecedents = {}
-        if 'max_class' in metadata:
-            max_class = metadata['max_class']
-        else:
-            max_class = len(metadata['classes'])
-
-        for rule, modifiers, used in zip(self.rules, self.modifiers, self.used_rules):
-            if used:
-                rule = flocalx.rule.FuzzyRule.from_chromosome(rule,
-                                                              modifiers,
-                                                              fuzzy_variables,
-                                                              metadata,
-                                                              all_antecedents)
-                rules.add(rule)
-
-        return flocalx.rule.FLocalX(rules, max_class=max_class)
 
     def _max_min_arithmetic_crossover(self, parent1, parent2):
         child1 = np.min([parent1, parent2], axis=0)
