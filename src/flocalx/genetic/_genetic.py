@@ -10,6 +10,9 @@ import numpy as np
 from sklearn.utils import check_X_y
 from sklearn.metrics import roc_auc_score, accuracy_score
 
+# Local application
+from ..rule import FLocalX
+
 # =============================================================================
 # Classes
 # =============================================================================
@@ -165,7 +168,7 @@ class GeneticAlgorithm:
         return X[indices], y[indices]
 
     def cache_score(self, chromosome):
-        rb = chromosome.to_rule_based_system(self.metadata)
+        rb = FLocalX.from_chromosome(chromosome, self.metadata)
         rules = rb.rules
         random_guesses = 0
         if not rb.rules:
