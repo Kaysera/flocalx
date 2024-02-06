@@ -15,7 +15,29 @@ import flocalx.rule
 
 
 class Chromosome:
+    """ A representation of a ruleset for the global explanation theory used
+    in the genetic algorithm.
+    """
     def __init__(self, variables, rules, modifiers, used_rules, alpha=0.8, fitness=lambda x: 0, random_state=None):
+        """ Constructor for the Chromosome class.
+
+        Parameters
+        ----------
+        variables : numpy.ndarray
+            The variables of the chromosome.
+        rules : numpy.ndarray
+            The rules of the chromosome.
+        modifiers : numpy.ndarray
+            The modifiers of the chromosome.
+        used_rules : numpy.ndarray
+            The used rules of the chromosome.
+        alpha : float, optional
+            The alpha parameter for the crossover operation, by default 0.8.
+        fitness : function, optional
+            The fitness function for the chromosome, by default lambda x: 0.
+        random_state : numpy.random.Generator, optional
+            The random state for the chromosome, by default None.
+        """
         self.variables = variables
         self.rules = rules
         self.modifiers = modifiers

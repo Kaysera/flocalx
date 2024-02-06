@@ -6,4 +6,6 @@
 
 .. automodule:: flocalx.genetic
    :members:
-   :no-inherited-members:
+   :inherited-members:
+   :special-members: __init__
+   :member-order: bysource
