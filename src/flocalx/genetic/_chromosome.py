@@ -95,6 +95,25 @@ class Chromosome:
 
     @staticmethod
     def from_ruleset(ruleset, variable_metadata, alpha=0.8, fitness=lambda x: 0):
+        """ Create a chromosome from a ruleset by mapping the ruleset to the
+        chromosome representation according to the variable metadata.
+
+        Parameters
+        ----------
+        ruleset : Ruleset
+            The ruleset to be mapped to the chromosome.
+        variable_metadata : dict
+            The metadata of the variables.
+        alpha : float, optional
+            The alpha parameter for the crossover operation, by default 0.8.
+        fitness : function, optional
+            The fitness function for the chromosome, by default lambda x: 0.
+
+        Returns
+        -------
+        Chromosome
+            A chromosome representation of the ruleset.
+        """
         variables = Chromosome._variables_chromosome(ruleset, variable_metadata)
         rules = Chromosome._rules_chromosome(ruleset, variable_metadata)
         modifiers = Chromosome._rules_modifier_chromosome(ruleset, variable_metadata)
@@ -127,6 +146,18 @@ class Chromosome:
         return child1, child2
 
     def crossover(self, other):
+        """Crossover operation for the chromosome.
+
+        Parameters
+        ----------
+        other : Chromosome
+            The other chromosome to be crossed over with.
+
+        Returns
+        -------
+        list
+            A list of the two best children chromosomes.
+        """
 
         variables_children = self._max_min_arithmetic_crossover(self.variables.flatten(),
                                                                 other.variables.flatten())
@@ -192,6 +223,14 @@ class Chromosome:
         return new_used_rules
 
     def mutation(self, metadata):
+        """ Mutation operation for the chromosome.
+
+        Returns
+        -------
+        Chromosome
+            A new chromosome with the mutation applied.
+
+        """
         new_variables = self._variables_mutation(metadata)
         new_rules = self._rules_mutation(metadata)
         new_modifiers = self._modifiers_mutation()
@@ -205,6 +244,20 @@ class Chromosome:
                           self.random_state)
 
     def generate_initial_population(self, metadata, population_size):
+        """ Generate an initial population for the genetic algorithm.
+        
+        Parameters
+        ----------
+        metadata : dict
+            The metadata of the variables.
+        population_size : int
+            The size of the population to be generated.
+
+        Returns
+        -------
+        list
+            A list of the initial population.
+        """
         population = []
         pop_size = population_size // 4
         for i in range(pop_size):

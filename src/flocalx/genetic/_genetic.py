@@ -24,6 +24,9 @@ METRIC_FUNCTIONS = {
 
 
 class GeneticAlgorithm:
+    """ Genetic algorithm for optimization of the global explanation theory.
+    To execute the genetic algorithm, call the instance of the class.
+    """
     def __init__(self,
                  metadata,
                  X,
@@ -40,6 +43,42 @@ class GeneticAlgorithm:
                  metric='accuracy',
                  debug=True,
                  random_state=None):
+        """ Constructor for the GeneticAlgorithm class.
+
+        Parameters
+        ----------
+        metadata : dict
+            The metadata of the dataset.
+        X : array-like of shape (n_samples, n_features)
+            The input samples.
+        y : array-like of shape (n_samples,)
+            The target values.
+        kappa : int, default=100
+            The number of iterations for the genetic algorithm.
+        crossover_prob : float, default=0.8
+            The probability of crossover.
+        mutation_prob : float, default=0.1
+            The probability of mutation.
+        size_pressure : float, default=0.5
+            The pressure for reducing the size of the ruleset.
+        population_size : int, default=100
+            The size of the initial population.
+        minibatch : int, default=None
+            The size of the minibatch for the genetic algorithm.
+            If None, the genetic algorithm will use the entire dataset.
+        initial_chromosomes : list of Chromosome, default=None
+            The initial chromosomes for the genetic algorithm.
+        stagnation : bool, default=False
+            Whether to use stagnation as a stopping criterion.
+        epsilon : float, default=0.001
+            The threshold for stagnation.
+        metric : str, default='accuracy'
+            The metric to use for the genetic algorithm. It can be 'accuracy' or 'auc'.
+        debug : bool, default=True
+            Whether to print debug information.
+        random_state : int, RandomState instance or None, default=None
+            Determines random number generation for the genetic algorithm.
+        """
 
         if random_state is None:
             self.random_state = np.random.default_rng()

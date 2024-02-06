@@ -9,7 +9,6 @@ It includes the following classes:
     A representation of a ruleset for the global explanation theory.
 :class:`.GeneticAlgorithm`
     A genetic algorithm for optimization of the global explanation theory.
-
 """
 
 # =============================================================================
