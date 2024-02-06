@@ -58,9 +58,9 @@ class GeneticAlgorithm:
         self.minibatch = minibatch
         self.stagnation = stagnation
         self.epsilon = epsilon
+        self.metric = metric
         self.population = self._initialize_population(initial_chromosomes)
         self.best_score = np.max(self.population)
-        self.metric = metric
 
         # Multiplier constant for rank selection
         RANK_MULTIPLIER = 2/(len(self.population)**2 + (len(self.population)))
