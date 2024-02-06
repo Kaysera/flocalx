@@ -180,7 +180,7 @@ class FLocalX(FuzzyRuleSet):
         return FLocalX(rules, max_class=max_class, merge_operators=merge_operators, random_state=random_state)
 
     @staticmethod
-    def from_chromosome(self, chromosome, metadata, merge_operators=[], random_state=None):
+    def from_chromosome(chromosome, metadata, merge_operators=[], random_state=None):
         fuzzy_variables = chromosome._fuzzy_variables(metadata)
         rules = set([])
         all_antecedents = {}

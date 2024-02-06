@@ -56,23 +56,26 @@ class Chromosome:
     def __sub__(self, other):
         return self.score - other.score
 
-    def _rules_chromosome(self, ruleset, variable_metadata):
+    @staticmethod
+    def _rules_chromosome(ruleset, variable_metadata):
         return np.array([rule.chromosome(variable_metadata) for rule in ruleset.rules])
 
-    def _rules_modifier_chromosome(self, ruleset, variable_metadata):
+    @staticmethod
+    def _rules_modifier_chromosome(ruleset, variable_metadata):
         return np.array([rule.modifier_chromosome(variable_metadata) for rule in ruleset.rules])
 
-    def _variables_chromosome(self, ruleset, metadata):
+    @staticmethod
+    def _variables_chromosome(ruleset, metadata):
         c = np.zeros((len(metadata['continuous']), metadata['sets'] - 2))
         for var in metadata['continuous']:
             c[metadata['continuous'][var], :] = np.array(list(metadata[var]['points'].keys())[1:-1])
         return c
 
     @staticmethod
-    def from_ruleset(self, ruleset, variable_metadata, alpha=0.8, fitness=lambda x: 0):
-        variables = self._variables_chromosome(ruleset, variable_metadata)
-        rules = self._rules_chromosome(ruleset, variable_metadata)
-        modifiers = self._rules_modifier_chromosome(ruleset, variable_metadata)
+    def from_ruleset(ruleset, variable_metadata, alpha=0.8, fitness=lambda x: 0):
+        variables = Chromosome._variables_chromosome(ruleset, variable_metadata)
+        rules = Chromosome._rules_chromosome(ruleset, variable_metadata)
+        modifiers = Chromosome._rules_modifier_chromosome(ruleset, variable_metadata)
         used_rules = np.ones(len(ruleset.rules))
 
         return Chromosome(variables, rules, modifiers, used_rules, alpha, fitness, ruleset.random_state)
