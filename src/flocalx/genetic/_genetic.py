@@ -34,7 +34,8 @@ class GeneticAlgorithm:
                  kappa=100,
                  crossover_prob=0.8,
                  mutation_prob=0.1,
-                 size_pressure=0.5,
+                 size_pressure=0.4,
+                 premise_pressure=0.2,
                  population_size=100,
                  minibatch=None,
                  initial_chromosomes=None,
@@ -59,8 +60,10 @@ class GeneticAlgorithm:
             The probability of crossover.
         mutation_prob : float, default=0.1
             The probability of mutation.
-        size_pressure : float, default=0.5
+        size_pressure : float, default=0.4
             The pressure for reducing the size of the ruleset.
+        premise_pressure : float, default=0.2
+            The pressure for reducing the number of premises in the ruleset.
         population_size : int, default=100
             The size of the initial population.
         minibatch : int, default=None
@@ -89,10 +92,15 @@ class GeneticAlgorithm:
         self.X, self.y = check_X_y(X, y, dtype=['float64', 'object'])
         self.kappa = kappa
         self.current_iteration = 0
+        self.total_iterations = 0
         self.crossover_prob = crossover_prob
         self.mutation_prob = mutation_prob
         self.debug = debug
         self.size_pressure = size_pressure
+        self.premise_pressure = premise_pressure
+        if (size_pressure + premise_pressure) > 1:
+            raise ValueError('The sum of size_pressure and premise_pressure must be smaller than 1')
+
         self.population_size = population_size
         self.minibatch = minibatch
         self.stagnation = stagnation
@@ -109,8 +117,10 @@ class GeneticAlgorithm:
 
     def __call__(self):
         self.current_iteration = 0
+        self.total_iterations = 0
         while not self._finish():
             self.current_iteration += 1
+            self.total_iterations += 1
             if self.debug:
                 print(f'Iteration {self.current_iteration}, max score: {np.max(self.population)}')
             population = self._rank_selection()
@@ -199,15 +209,24 @@ class GeneticAlgorithm:
         return match
 
     def fitness(self, chromosome):
-        return self.size_pressure * (1 - np.sum(chromosome.used_rules) / len(chromosome.used_rules)) \
-               + (1 - self.size_pressure) * self.cache_score(chromosome)
+        rb = FLocalX.from_chromosome(chromosome, self.metadata)
+        n_premises = rb.rule_size()
+        size_fitness = self.size_pressure * (1 - np.sum(chromosome.used_rules) / len(chromosome.used_rules))
+        premise_fitness = self.premise_pressure * (1 - n_premises / len(self.metadata))
+        score_fitness = (1 - self.size_pressure - self.premise_pressure) * self.cache_score(rb)
+
+        return size_fitness + premise_fitness + score_fitness
 
     def _minibatch(self, X, y):
-        indices = self.random_state.choice(range(len(X)), size=self.minibatch, replace=True)
-        return X[indices], y[indices]
+        val, amount = np.unique(y, return_counts=True)
+        idx = []
+        for v, a in zip(val, amount):
+            id = np.random.choice(np.where(y == v)[0], int(a/len(y) * self.minibatch), replace=True)
+            idx += list(id)
 
-    def cache_score(self, chromosome):
-        rb = FLocalX.from_chromosome(chromosome, self.metadata)
+        return X[idx], y[idx]
+
+    def cache_score(self, rb):
         rules = rb.rules
         random_guesses = 0
         if not rb.rules:
