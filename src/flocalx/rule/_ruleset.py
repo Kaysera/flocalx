@@ -45,7 +45,7 @@ class RuleSet():
 
     def auc(self, X, y):
         X, y = check_X_y(X, y, dtype=['float64', 'object'])
-        return roc_auc_score(y, self.predict(X))
+        return roc_auc_score(y, self.predict_proba(X)[:, 1])
 
     def size(self):
         return len(self.rules)
