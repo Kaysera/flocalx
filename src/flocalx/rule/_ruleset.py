@@ -72,13 +72,13 @@ class FuzzyRuleSet(RuleSet):
 
         return FuzzyRuleSet(rules)
 
-    def predict(self, X):
+    def predict_proba(self, X):
         X = check_array(X, dtype=['float64', 'object'])
 
         # Aggregated vote
         # First, we get the sum of the match values for each class
-        predictions = []
-        for x in X:
+        predictions = np.zeros([len(X), 2])
+        for i, x in enumerate(X):
             votes = {}
             for rule in self.rules:
                 if rule.consequent not in votes:
@@ -87,13 +87,20 @@ class FuzzyRuleSet(RuleSet):
 
             # Then, we get the class with the highest sum
             if votes and max(votes.values()) > 0:
-                predictions.append(max(votes, key=votes.get))
+                total_sum = sum(votes.values())
+                pred = np.zeros(len(votes))
+                for k, v in votes.items():
+                    pred[k] = v/total_sum
+                predictions[i] = pred
             else:
                 if self.max_class is None:
-                    predictions.append(self.random_state.integers(0, 2))
+                    predictions[i] = np.array([0.5, 0.5])
                 else:
-                    predictions.append(self.max_class)
-        return predictions
+                    predictions[i] = np.array([0 if i != self.max_class else 1 for i in range(self.max_class+1)])
+        return np.array(predictions)
+
+    def predict(self, X):
+        return np.argmax(self.predict_proba(self, X), axis=1)
 
     def _robust_threshold(self, instance, rule_list, class_val):
         """Obtain the robust threshold"""
